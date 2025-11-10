@@ -26,7 +26,12 @@
     <!-- Main Content -->
     <div class="container">
         <div class="header">
-            <h1>📦 Productos</h1>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <h1>📦 Productos</h1>
+                <select id="companySelect" onchange="changeCompany()" style="padding: 0.5rem; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 0.5rem; color: #e2e8f0; font-size: 1rem;">
+                    <option value="">Seleccionar empresa...</option>
+                </select>
+            </div>
             <button class="btn btn-primary" id="addProductBtn" onclick="openAddModal()">
                 <i class="fas fa-plus"></i> Agregar Producto
             </button>
@@ -129,6 +134,7 @@
         let currentDeleteId = null;
         let companyId = null;
         let userRole = null;
+        let allCompanies = [];
 
         // Initialize
         document.addEventListener("DOMContentLoaded", async () => {
@@ -144,39 +150,88 @@
                 return;
             }
 
-            // Get company ID and user role
+            // Get all companies and populate select
             try {
                 const response = await fetch(`${API_BASE}/api/companies/my`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
 
                 if (response.ok) {
-                    const companies = await response.json();
-                    if (companies.length > 0) {
-                        companyId = companies[0].id;
-                        localStorage.setItem("company_id", companyId);
-                        
-                        // Get user role for this company
-                        const roleResponse = await fetch(
-                            `${API_BASE}/api/companies/${companyId}/my-role`,
-                            { headers: { "Authorization": `Bearer ${token}` } }
-                        );
-                        
-                        if (roleResponse.ok) {
-                            const roleData = await roleResponse.json();
-                            userRole = roleData.role;
-                        }
-                        
-                        await loadProducts();
-                    } else {
+                    allCompanies = await response.json();
+                    const select = document.getElementById("companySelect");
+                    
+                    if (allCompanies.length === 0) {
                         showAlert("No perteneces a ninguna empresa", "error");
+                        return;
                     }
+                    
+                    // Agregar opciones al select
+                    allCompanies.forEach(company => {
+                        const option = document.createElement("option");
+                        option.value = company.id;
+                        option.textContent = company.name;
+                        select.appendChild(option);
+                    });
+                    
+                    // Obtener company_id de localStorage o usar la primera
+                    let savedCompanyId = localStorage.getItem("current_company_id");
+                    
+                    if (savedCompanyId && allCompanies.some(c => c.id == savedCompanyId)) {
+                        companyId = parseInt(savedCompanyId);
+                        select.value = companyId;
+                    } else {
+                        companyId = allCompanies[0].id;
+                        select.value = companyId;
+                        localStorage.setItem("current_company_id", companyId);
+                    }
+                    
+                    // Get user role for this company
+                    const roleResponse = await fetch(
+                        `${API_BASE}/api/companies/${companyId}/my-role`,
+                        { headers: { "Authorization": `Bearer ${token}` } }
+                    );
+                    
+                    if (roleResponse.ok) {
+                        const roleData = await roleResponse.json();
+                        userRole = roleData.role;
+                    }
+                    
+                    await loadProducts();
                 } else {
                     showAlert("Error al obtener empresas", "error");
                 }
             } catch (error) {
                 showAlert("Error: " + error.message, "error");
             }
+        }
+
+        async function changeCompany() {
+            const select = document.getElementById("companySelect");
+            companyId = parseInt(select.value);
+            
+            if (!companyId) return;
+            
+            localStorage.setItem("current_company_id", companyId);
+            
+            const token = localStorage.getItem("token");
+            try {
+                // Obtener rol para la nueva empresa
+                const roleResponse = await fetch(
+                    `${API_BASE}/api/companies/${companyId}/my-role`,
+                    { headers: { "Authorization": `Bearer ${token}` } }
+                );
+                
+                if (roleResponse.ok) {
+                    const roleData = await roleResponse.json();
+                    userRole = roleData.role;
+                } else {
+                    userRole = null;
+                }
+            } catch (error) {
+                console.error("Error obtaining role:", error);
+            }
+            
+            await loadProducts();
         }
 
         async function loadProducts() {
