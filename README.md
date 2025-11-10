@@ -125,13 +125,6 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 - Frontend: `http://localhost:8000`
 - API Docs: `http://localhost:8000/docs`
 
-## 🔑 Credenciales de Test
-
-**Usuario Admin:**
-- Email: `jp@gmail.com`
-- Contraseña: `jp`
-- Empresa: `jp` (ID: 3)
-- Rol: `admin`
 
 ## 📝 Endpoints API
 
