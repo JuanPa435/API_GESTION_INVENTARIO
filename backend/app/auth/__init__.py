@@ -1,0 +1,1 @@
+# Este archivo indica que el directorio auth es un paquete de Python

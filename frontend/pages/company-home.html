@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tu empresa - InvenTech</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/landing.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="stylesheet" href="../css/company.css" />
+</head>
+<body>
+  <!-- FX fondo -->
+  <div class="fx fx-grid" aria-hidden="true"></div>
+  <div class="fx fx-stars" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-1" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-2" aria-hidden="true"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container flex justify-between items-center">
+      <a href="/pages/menu.html" class="logo">
+        <i class="fas fa-cube logo-icon"></i>
+        <span class="logo-text text-gradient">InvenTech</span>
+      </a>
+      <div class="nav-links">
+        <a href="/pages/menu.html" class="nav-link">Menú</a>
+        <a href="../login.html" class="btn btn-ghost">Cerrar sesión</a>
+      </div>
+      <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+    </div>
+  </nav>
+
+  <main class="page-wrap welcome-wrap">
+    <div class="container">
+      <!-- Banner de bienvenida -->
+      <section class="welcome-banner card">
+        <div class="welcome-header">
+          <div class="welcome-icon"><i class="fa-solid fa-building"></i></div>
+          <div class="welcome-titles">
+            <h1 id="company-title" class="text-gradient">Bienvenido a tu empresa</h1>
+            <p id="company-subtitle" class="auth-subtitle">Cargando datos de tu organización…</p>
+          </div>
+        </div>
+        <div class="welcome-meta">
+      <div id="company-code-chip" class="chip copyable" title="Código de invitación"><i class="fa-solid fa-key"></i><span id="company-code">—</span></div>
+          <button class="btn btn-ghost" id="copy-code"><i class="fa-solid fa-copy"></i> Copiar código</button>
+          <div class="role-pill" id="role-pill"><i class="fa-solid fa-user-shield"></i><span id="role-name">—</span></div>
+        </div>
+      </section>
+
+      <!-- Barra de gestión rápida -->
+      <section class="manage-section">
+        <h3 class="manage-title">Gestiona tu inventario</h3>
+        <div class="manage-bar" id="manage-bar">
+          <a href="#" class="manage-item" data-action="products"><i class="fa-solid fa-box"></i><span>Productos</span></a>
+          <a href="#" class="manage-item" data-action="stock"><i class="fa-solid fa-layer-group"></i><span>Stock</span></a>
+          <a href="#" class="manage-item" data-action="entries"><i class="fa-solid fa-arrow-down-long"></i><span>Entradas</span></a>
+          <a href="#" class="manage-item" data-action="outputs"><i class="fa-solid fa-arrow-up-long"></i><span>Salidas</span></a>
+          <a href="#" class="manage-item" data-action="categories"><i class="fa-solid fa-tags"></i><span>Categorías</span></a>
+          <a href="#" class="manage-item" data-action="suppliers"><i class="fa-solid fa-truck"></i><span>Proveedores</span></a>
+          <a href="#" class="manage-item" data-action="reports"><i class="fa-solid fa-chart-line"></i><span>Reportes</span></a>
+          <a href="#" class="manage-item only-admin" data-action="users"><i class="fa-solid fa-users"></i><span>Usuarios</span></a>
+          <a href="#" class="manage-item only-admin" data-action="settings"><i class="fa-solid fa-gear"></i><span>Ajustes</span></a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Guard de token
+      const token = localStorage.getItem('token');
+      if (!token) return window.location.replace('/login.html');
+      // Anti-back
+      history.pushState(null, '', location.href);
+      window.addEventListener('popstate', () => history.go(1));
+
+      // Decodificar JWT (solo payload)
+      function decodeJWT(t) {
+        try {
+          const payload = t.split('.')[1];
+          const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+          return JSON.parse(decodeURIComponent(escape(json)));
+        } catch (_) { return null; }
+      }
+
+  const payload = decodeJWT(token) || {};
+  let role = 'employee'; // se determinará consultando al backend
+  let companyId = payload.company_id ?? null;
+      const params = new URLSearchParams(location.search);
+      const qId = parseInt(params.get('company_id'), 10);
+
+      async function resolveCompanyId() {
+        if (companyId) return companyId;
+        try {
+          const res = await fetch('/api/companies/my', { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!res.ok) return null;
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            companyId = list[0].id;
+            return companyId;
+          }
+        } catch(_) {}
+        return null;
+      }
+
+      // quitamos pre-chequeo ruidoso; validamos pertenencia en el fetch principal y hacemos fallback si es necesario
+
+      // Controles DOM
+      const title = document.getElementById('company-title');
+      const subtitle = document.getElementById('company-subtitle');
+      const codeEl = document.getElementById('company-code');
+      const copyBtn = document.getElementById('copy-code');
+      const rolePill = document.getElementById('role-pill');
+      const roleName = document.getElementById('role-name');
+
+      function applyRole(r) {
+        role = r === 'admin' ? 'admin' : 'employee';
+        roleName.textContent = role === 'admin' ? 'Admin' : 'Empleado';
+        if (role !== 'admin') {
+          document.querySelectorAll('.only-admin').forEach(el => el.classList.add('hidden'));
+        } else {
+          document.querySelectorAll('.only-admin').forEach(el => el.classList.remove('hidden'));
+        }
+      }
+
+      // Obtener datos de la empresa
+      (async () => {
+        try {
+          // 1) preferir id de query; si no, token; si no, resolver de backend
+          let desiredId = !Number.isNaN(qId) ? qId : (companyId || null);
+          if (!desiredId) desiredId = await resolveCompanyId();
+          if (!desiredId) {
+            if (window.showToast) showToast('Aún no perteneces a una empresa. Elige crear o unirte.', 'error');
+            return setTimeout(() => window.location.replace('/pages/menu.html'), 900);
+          }
+          // 2) intentar cargar la empresa objetivo; si 403 y venía por query, hacer fallback silencioso
+          let res = await fetch(`/api/companies/${desiredId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!res.ok && res.status === 403 && !Number.isNaN(qId)) {
+            // Silencioso: no mostramos toast al intentar abrir empresa ajena; hacemos fallback automático
+            console.debug('403 loading company; falling back to user company');
+            const fb = await resolveCompanyId();
+            if (!fb) return setTimeout(() => window.location.replace('/pages/menu.html'), 900);
+            desiredId = fb;
+            res = await fetch(`/api/companies/${desiredId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+          }
+          if (!res.ok) throw new Error('No se pudo cargar la empresa');
+          companyId = desiredId;
+          const company = await res.json();
+          title.textContent = `Bienvenido a ${company.name}`;
+          subtitle.textContent = company.description || 'Gestiona tu inventario desde aquí';
+          codeEl.textContent = company.invite_code || '—';
+          // Obtener rol actual en esta empresa
+          try {
+            const rr = await fetch(`/api/companies/${desiredId}/my-role`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (rr.ok) {
+              const data = await rr.json();
+              applyRole(data.role);
+            }
+          } catch(_) {}
+        } catch (err) {
+          if (window.showToast) showToast('Error: ' + (err?.message || err), 'error');
+        }
+      })();
+
+      const safeCopy = async (text) => {
+        if (!text) return false;
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch(_) { /* continue */ }
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly','');
+          ta.style.position = 'absolute'; ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select(); ta.setSelectionRange(0, ta.value.length);
+          const ok = document.execCommand('copy');
+          ta.remove();
+          return ok;
+        } catch(_) { return false; }
+      };
+
+      copyBtn?.addEventListener('click', async (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        const code = (codeEl.textContent || '').trim();
+        const btn = ev.currentTarget;
+        const done = await safeCopy(code);
+        if (done) {
+          if (window.showToast) showToast('Código copiado al portapapeles', 'success');
+          if (btn && btn.disabled === false) {
+            const prev = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+            setTimeout(()=>{ btn.disabled = false; btn.innerHTML = prev; }, 1200);
+          }
+        } else {
+          if (window.showToast) showToast('No se pudo copiar. Selección manual sugerida.', 'error');
+        }
+      });
+      // Hacer el chip clicable para copiar también
+      const chip = document.getElementById('company-code-chip');
+      if (chip) {
+        chip.addEventListener('click', async (ev) => {
+          ev.preventDefault(); ev.stopPropagation();
+          const code = (codeEl.textContent || '').trim();
+          const ok = await safeCopy(code);
+          if (ok) {
+            if (window.showToast) showToast('Código copiado al portapapeles', 'success');
+            chip.classList.add('pulse');
+            setTimeout(()=>chip.classList.remove('pulse'), 1200);
+          } else {
+            if (window.showToast) showToast('No se pudo copiar. Selección manual sugerida.', 'error');
+          }
+        });
+      }
+
+      // Barra de gestión (por ahora en construcción)
+      document.getElementById('manage-bar')?.addEventListener('click', (e) => {
+        const a = e.target.closest('a.manage-item');
+        if (!a) return;
+        e.preventDefault();
+        const action = a.getAttribute('data-action');
+        // Enlazar a páginas reales cuando existan
+        const routes = {
+          products: '/pages/productos.html', stock: '#', entries: '#', outputs: '#', categories: '#', suppliers: '#', reports: '#', users: '/pages/users-management.html', settings: '#'
+        };
+        const href = routes[action] || '#';
+        if (href === '#') {
+          if (window.showToast) showToast('Sección en construcción', 'success');
+        } else {
+          // Pasar company_id en la URL si es necesario
+          if (action === 'products' && companyId) {
+            localStorage.setItem('user_data', JSON.stringify({ company_id: companyId }));
+          }
+          window.location.href = href;
+        }
+      });
+
+      // Logout limpia token
+      document.querySelector('.nav-links a.btn.btn-ghost')?.addEventListener('click', () => {
+        try { localStorage.removeItem('token'); } catch {}
+      });
+    });
+  </script>
+</body>
+</html>

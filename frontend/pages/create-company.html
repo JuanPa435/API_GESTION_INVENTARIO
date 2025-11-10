@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crear Empresa - InvenTech</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/landing.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="stylesheet" href="../css/company.css" />
+ 
+</head>
+<body>
+  <div class="fx fx-grid" aria-hidden="true"></div>
+  <div class="fx fx-stars" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-1" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-2" aria-hidden="true"></div>
+
+  <nav class="navbar">
+    <div class="container flex justify-between items-center">
+      <a href="/pages/menu.html" class="logo">
+        <i class="fas fa-cube logo-icon"></i>
+        <span class="logo-text text-gradient">InvenTech</span>
+      </a>
+      <div class="nav-links">
+        <a href="/pages/menu.html" class="nav-link">Menú</a>
+        <a href="../login.html" class="btn btn-ghost">Cerrar sesión</a>
+      </div>
+      <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+    </div>
+  </nav>
+  <main class="page-wrap">
+    <div class="container">
+      <div class="card">
+        <div class="hero">
+          <h1 class="text-gradient"><i class="fa-solid fa-building"></i> Crear empresa</h1>
+          <p>Configura tu organización y elige un código exclusivo para invitar a tu equipo.</p>
+        </div>
+
+      <div class="grid">
+        <section class="panel">
+          <form id="create-company-form" class="form" method="post" action="#">
+            <label class="label" for="company-name">Nombre</label>
+            <div class="input-group">
+              <i class="fa-solid fa-building input-icon"></i>
+              <input id="company-name" name="name" type="text" class="input-control" placeholder="Ej: InvenTech Global" required />
+            </div>
+
+            <label class="label" for="company-desc">Descripción (opcional)</label>
+            <div class="input-group">
+              <i class="fa-solid fa-align-left input-icon"></i>
+              <input id="company-desc" name="description" type="text" class="input-control" placeholder="Ej: Gestión de inventario para retail" />
+            </div>
+
+            <label class="label" for="company-code">Código exclusivo</label>
+            <div class="input-with-action">
+              <div class="input-group">
+                <i class="fa-solid fa-key input-icon"></i>
+                <input id="company-code" name="invite_code" type="text" class="input-control" placeholder="Ej: MI-EMPRESA-2025" required maxlength="50" />
+              </div>
+              <button class="btn btn-ghost" type="button" id="btn-suggest-code"><i class="fa-solid fa-wand-magic-sparkles"></i> Sugerir</button>
+            </div>
+            <div class="form-row" style="justify-content: space-between;">
+              <div class="hint">Solo letras, números y guiones. 4 a 50 caracteres.</div>
+              <div class="chip" id="code-preview"><i class="fa-solid fa-lock"></i><span>CODE</span></div>
+            </div>
+
+            <div class="auth-actions">
+              <button class="btn btn-xl btn-neon btn-full" type="submit">Crear empresa <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="side">
+          <div class="side-icon">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <h3 class="side-title">Tu código de acceso</h3>
+          <p class="auth-subtitle">Comparte este código con tu equipo para que se unan. Debe ser único.</p>
+          <ul class="tip-list">
+            <li><i class="fa-solid fa-circle-check"></i> Fácil de recordar</li>
+            <li><i class="fa-solid fa-circle-check"></i> Formato: A–Z, 0–9 y guiones</li>
+          </ul>
+          <div class="chip"><i class="fa-solid fa-lock"></i><span>ACME-2025</span></div>
+        </aside>
+      </div>
+    </div>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Guard: requiere token
+      const token = localStorage.getItem('token');
+      if (!token) return window.location.replace('/login.html');
+      // Anti-back
+      history.pushState(null, '', location.href);
+      window.addEventListener('popstate', () => history.go(1));
+
+      const form = document.getElementById('create-company-form');
+      const codeInput = document.getElementById('company-code');
+      const codePreview = document.getElementById('code-preview').querySelector('span');
+      const suggestBtn = document.getElementById('btn-suggest-code');
+
+      codeInput?.addEventListener('input', () => {
+        const raw = codeInput.value || '';
+        const upper = raw.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+        if (raw !== upper) {
+          const pos = codeInput.selectionStart;
+          codeInput.value = upper;
+          if (typeof pos === 'number') codeInput.setSelectionRange(pos, pos);
+        }
+        codePreview.textContent = upper || 'CODE';
+      });
+
+      suggestBtn?.addEventListener('click', () => {
+        const name = (document.getElementById('company-name').value || '').trim();
+        const base = name
+          .toUpperCase()
+          .replace(/Á|À|Â|Ä/g,'A')
+          .replace(/É|È|Ê|Ë/g,'E')
+          .replace(/Í|Ì|Î|Ï/g,'I')
+          .replace(/Ó|Ò|Ô|Ö/g,'O')
+          .replace(/Ú|Ù|Û|Ü/g,'U')
+          .replace(/Ñ/g,'N')
+          .replace(/[^A-Z0-9]+/g,'-')
+          .replace(/^-+|-+$/g,'')
+          .slice(0, 18);
+        const year = new Date().getFullYear();
+        const candidate = (base ? base + '-' : '') + year;
+        codeInput.value = candidate;
+        codeInput.dispatchEvent(new Event('input'));
+      });
+
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('company-name').value.trim();
+        const description = document.getElementById('company-desc').value.trim() || undefined;
+        const invite_code = codeInput.value.trim().toUpperCase();
+        if (invite_code.length < 4 || invite_code.length > 50 || /[^A-Z0-9-]/.test(invite_code)) {
+          return (window.showToast ? showToast('Código inválido. Usa 4-50 caracteres: A-Z, 0-9 o -', 'error') : alert('Código inválido. Usa 4-50 caracteres: A-Z, 0-9 o -'));
+        }
+        try {
+          const res = await fetch('/api/companies/self-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ name, description, invite_code })
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.detail || 'No se pudo crear la empresa');
+          }
+          // Actualizar token si el backend envió uno nuevo
+          try {
+            const newTok = res.headers.get('x-new-token');
+            if (newTok) localStorage.setItem('token', newTok);
+          } catch(_) {}
+          const company = await res.json();
+          if (window.showToast) {
+            const cod = company.invite_code ? ` (código: ${company.invite_code})` : '';
+            showToast(`Empresa creada: ${company.name}${cod}` , 'success');
+          } else alert(`Empresa creada: ${company.name}`);
+          setTimeout(() => window.location.replace('/pages/company-home.html'), 1100);
+        } catch (err) {
+          if (window.showToast) showToast('Error: ' + (err?.message || err), 'error');
+          else alert('Error: ' + (err?.message || err));
+        }
+      });
+
+      // Logout limpia token
+      document.querySelector('.nav-links a.btn.btn-ghost')?.addEventListener('click', () => {
+        try { localStorage.removeItem('token'); } catch {}
+      });
+    });
+  </script>
+</body>
+</html>

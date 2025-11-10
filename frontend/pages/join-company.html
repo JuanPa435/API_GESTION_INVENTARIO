@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unirse a una empresa - InvenTech</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/landing.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="stylesheet" href="../css/company.css" />
+</head>
+<body>
+  <div class="fx fx-grid" aria-hidden="true"></div>
+  <div class="fx fx-stars" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-1" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-2" aria-hidden="true"></div>
+
+  <nav class="navbar">
+    <div class="container flex justify-between items-center">
+      <a href="/pages/menu.html" class="logo">
+        <i class="fas fa-cube logo-icon"></i>
+        <span class="logo-text text-gradient">InvenTech</span>
+      </a>
+      <div class="nav-links">
+        <a href="/pages/menu.html" class="nav-link">Menú</a>
+        <a href="../login.html" class="btn btn-ghost">Cerrar sesión</a>
+      </div>
+      <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+    </div>
+  </nav>
+
+  <main class="page-wrap">
+    <div class="card">
+      <div class="hero">
+        <h1 class="text-gradient"><i class="fa-solid fa-user-group"></i> Unirte a una empresa</h1>
+        <p>Usa el ID numérico o el código exclusivo que te compartió tu administrador.</p>
+      </div>
+
+      <div class="grid">
+        <section class="panel">
+          <form id="join-company-form" class="form" method="post" action="#">
+            <label class="label" for="join-code">Código o ID</label>
+            <div class="input-group">
+              <i class="fa-solid fa-key input-icon"></i>
+              <input id="join-code" name="code" type="text" class="input-control" placeholder="Ej: ACME-2025 o 42" required />
+            </div>
+            <div class="field-hint">Acepta: A-Z, 0-9, guiones o números enteros para ID.</div>
+
+            <div class="auth-actions">
+              <button class="btn btn-xl btn-neon btn-full" type="submit">Unirme <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="side">
+          <div class="side-icon">
+            <i class="fa-solid fa-circle-info"></i>
+          </div>
+          <h3 class="side-title">¿Dónde encuentro el código?</h3>
+          <p class="auth-subtitle">Pídeselo al administrador de tu empresa. Un ejemplo común es:</p>
+          <div class="chip"><i class="fa-solid fa-lock"></i><span>EMPRESA-2025</span></div>
+          <ul class="tip-list">
+            <li><i class="fa-solid fa-circle-check"></i> Si recibes un número, es el ID</li>
+            <li><i class="fa-solid fa-circle-check"></i> Mayúsculas/Minúsculas no importan</li>
+          </ul>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Guard: requiere token
+      const token = localStorage.getItem('token');
+      if (!token) return window.location.replace('/login.html');
+      // Anti-back
+      history.pushState(null, '', location.href);
+      window.addEventListener('popstate', () => history.go(1));
+
+      const form = document.getElementById('join-company-form');
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const codeInput = document.getElementById('join-code').value.trim();
+        try {
+          const payload = /^\d+$/.test(codeInput)
+            ? { company_id: Number(codeInput) }
+            : { code: codeInput };
+          const res = await fetch('/api/companies/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.detail || 'No se pudo unir a la empresa');
+          }
+          // Actualizar token si el backend envió uno nuevo
+          try {
+            const newTok = res.headers.get('x-new-token');
+            if (newTok) localStorage.setItem('token', newTok);
+          } catch(_) {}
+          const company = await res.json();
+          if (window.showToast) showToast(`Te uniste a: ${company.name}`, 'success');
+          else alert(`Te uniste a: ${company.name}`);
+          setTimeout(() => window.location.replace('/pages/company-home.html'), 1100);
+        } catch (err) {
+          if (window.showToast) showToast('Error: ' + (err?.message || err), 'error');
+          else alert('Error: ' + (err?.message || err));
+        }
+      });
+
+      // Logout limpia token
+      document.querySelector('.nav-links a.btn.btn-ghost')?.addEventListener('click', () => {
+        try { localStorage.removeItem('token'); } catch {}
+      });
+    });
+  </script>
+</body>
+</html>

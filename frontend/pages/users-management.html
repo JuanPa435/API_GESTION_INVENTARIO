@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usuarios de la empresa - InvenTech</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/landing.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="stylesheet" href="../css/company.css" />
+  <style>
+    .users-wrap { margin-top: 3.5rem; padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-2xl); }
+    .users-table { width: 100%; border-collapse: collapse; }
+    .users-table th, .users-table td { padding: .75rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }
+    .users-table th { color: var(--text-secondary); font-weight: 600; }
+    .role-select { background: rgba(2, 6, 23, 0.5); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-lg); padding: .5rem .75rem; }
+    .badge-role { display:inline-flex; align-items:center; gap:.4rem; padding:.2rem .55rem; border-radius:999px; border:1px solid var(--border); }
+    .badge-role i { color: var(--primary); }
+    .actions { display:flex; gap:.5rem; }
+  </style>
+</head>
+<body>
+  <div class="fx fx-grid" aria-hidden="true"></div>
+  <div class="fx fx-stars" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-1" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-2" aria-hidden="true"></div>
+
+  <nav class="navbar">
+    <div class="container flex justify-between items-center">
+      <a href="/pages/menu.html" class="logo">
+        <i class="fas fa-cube logo-icon"></i>
+        <span class="logo-text text-gradient">InvenTech</span>
+      </a>
+      <div class="nav-links">
+        <a href="/pages/menu.html" class="nav-link">Menú</a>
+        <a href="../login.html" class="btn btn-ghost">Cerrar sesión</a>
+      </div>
+      <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+    </div>
+  </nav>
+
+  <main class="users-wrap">
+    <div class="container">
+      <section class="card">
+        <div class="hero">
+          <h1 class="text-gradient"><i class="fa-solid fa-users"></i> Usuarios de la empresa</h1>
+          <p class="auth-subtitle">Asigna roles de administrador o empleado a los miembros de tu organización.</p>
+        </div>
+
+        <div id="company-info" class="welcome-meta" style="margin-bottom: var(--spacing-md); display:none;">
+          <div class="chip"><i class="fa-solid fa-building"></i><span id="company-name">—</span></div>
+          <div class="chip"><i class="fa-solid fa-key"></i><span id="company-code">—</span></div>
+        </div>
+
+        <div class="side" style="margin-bottom: var(--spacing-md);">
+          <i class="fa-solid fa-circle-info"></i>
+          <span style="margin-left:.5rem; color:var(--text-secondary);">Solo los administradores pueden cambiar roles. Debe quedar al menos un admin en la empresa.</span>
+        </div>
+
+        <div class="panel">
+          <div style="overflow-x:auto;">
+            <table class="users-table" id="users-table">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Email</th>
+                  <th>Rol</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      if (!token) return window.location.replace('/login.html');
+      history.pushState(null, '', location.href);
+      window.addEventListener('popstate', () => history.go(1));
+
+      function decodeJWT(t){
+        try { const p = t.split('.')[1]; return JSON.parse(decodeURIComponent(escape(atob(p.replace(/-/g,'+').replace(/_/g,'/'))))); } catch { return null; }
+      }
+      const payload = decodeJWT(token) || {};
+      let companyId = payload.company_id ?? null;
+
+      const tbody = document.getElementById('users-tbody');
+      const nameEl = document.getElementById('company-name');
+      const codeEl = document.getElementById('company-code');
+      const info = document.getElementById('company-info');
+
+      async function resolveCompanyId(){
+        if (companyId) return companyId;
+        try {
+          const res = await fetch('/api/companies/my', { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!res.ok) return null;
+          const arr = await res.json();
+          if (Array.isArray(arr) && arr.length > 0) {
+            companyId = arr[0].id;
+            return companyId;
+          }
+        } catch {}
+        return null;
+      }
+
+      async function loadCompany(){
+        try {
+          const id = companyId || await resolveCompanyId();
+          if (!id) return;
+          const res = await fetch(`/api/companies/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!res.ok) throw new Error();
+          const c = await res.json();
+          nameEl.textContent = c.name || 'Empresa';
+          codeEl.textContent = c.invite_code || '—';
+          info.style.display = 'flex';
+        } catch {}
+      }
+
+      async function ensureAdmin(){
+        // verifica rol real en esta empresa
+        const id = companyId || await resolveCompanyId();
+        if (!id) {
+          if (window.showToast) showToast('No perteneces a una empresa', 'error');
+          setTimeout(()=>window.location.replace('/pages/menu.html'), 900);
+          return false;
+        }
+        const r = await fetch(`/api/companies/${id}/my-role`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!r.ok) return false;
+        const data = await r.json().catch(()=>({role:'employee'}));
+        if ((data.role || 'employee') !== 'admin') {
+          if (window.showToast) showToast('Solo administradores pueden gestionar roles', 'error');
+          setTimeout(()=>window.location.replace('/pages/company-home.html'), 900);
+          return false;
+        }
+        return true;
+      }
+
+      async function loadUsers(){
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-secondary)">Cargando…</td></tr>';
+        try {
+          const headers = { 'Authorization': `Bearer ${token}` };
+          // usar endpoint que incluye rol y respeta la empresa actual
+          const id = companyId || await resolveCompanyId();
+          const res = await fetch(`/api/users/company/${id}/detailed`, { headers });
+          if (!res.ok) {
+            if (res.status === 401) {
+              if (window.showToast) showToast('Sesión expirada. Inicia sesión de nuevo.', 'error');
+              return setTimeout(()=>window.location.replace('/login.html'), 900);
+            }
+            let body = null;
+            try { body = await res.json(); } catch(e) { try { body = await res.text(); } catch(_) {} }
+            let detail = null;
+            if (body) {
+              if (typeof body === 'string') detail = body;
+              else if (Array.isArray(body.detail)) detail = body.detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+              else if (body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+              else detail = body.message || JSON.stringify(body);
+            }
+            console.error('Failed to load users (my-company)', res.status, body);
+            throw new Error(detail || `HTTP ${res.status}`);
+          }
+          const users = await res.json();
+          if (!Array.isArray(users) || users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-secondary)">Sin usuarios</td></tr>';
+            return;
+          }
+          tbody.innerHTML = '';
+          users.forEach(u => {
+            const tr = document.createElement('tr');
+            const isMe = (payload.sub && u.username === payload.sub);
+            const r = (u.role || 'employee');
+            tr.innerHTML = `
+              <td>${u.username}</td>
+              <td>${u.email}</td>
+              <td>
+                <span class="badge-role"><i class="fa-solid ${r==='admin' ? 'fa-user-shield' : 'fa-user'}"></i>${r==='admin' ? 'Admin' : 'Empleado'}</span>
+              </td>
+              <td class="actions">
+                <select class="role-select" data-user-id="${u.id}">
+                  <option value="employee" ${r==='employee' ? 'selected' : ''}>Empleado</option>
+                  <option value="admin" ${r==='admin' ? 'selected' : ''}>Admin</option>
+                </select>
+                <button class="btn btn-ghost" data-action="apply" data-user-id="${u.id}"><i class="fa-solid fa-floppy-disk"></i> Aplicar</button>
+              </td>
+            `;
+            // Evitar que un admin no vea opción si es él único admin; backend también protege
+            tbody.appendChild(tr);
+          });
+        } catch (e) {
+          const msg = (e && typeof e === 'object') ? (e.message || JSON.stringify(e)) : String(e);
+          tbody.innerHTML = `<tr><td colspan="4" style="color:#f87171">Error al cargar usuarios: ${msg}</td></tr>`;
+          console.error('loadUsers error:', e);
+        }
+      }
+
+      async function applyRole(userId, newRole){
+        try {
+          const res = await fetch(`/api/users/${userId}/role`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ role: newRole, company_id: companyId })
+          });
+          if (!res.ok) {
+            const d = await res.json().catch(()=>({}));
+            throw new Error(d.detail || 'No se pudo cambiar el rol');
+          }
+          if (window.showToast) showToast('Rol actualizado', 'success');
+          await loadUsers();
+        } catch (err) {
+          if (window.showToast) showToast(err.message || 'Error', 'error');
+        }
+      }
+
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action="apply"]');
+        if (!btn) return;
+        const id = btn.getAttribute('data-user-id');
+        const select = document.querySelector(`select.role-select[data-user-id="${id}"]`);
+        if (!select) return;
+        const role = select.value;
+        applyRole(id, role);
+      });
+
+      (async () => {
+        const ok = await ensureAdmin();
+        if (!ok) return;
+        await loadCompany();
+        await loadUsers();
+      })();
+
+      // Logout limpia token
+      document.querySelector('.nav-links a.btn.btn-ghost')?.addEventListener('click', () => { try { localStorage.removeItem('token'); } catch {} });
+    });
+  </script>
+</body>
+</html>

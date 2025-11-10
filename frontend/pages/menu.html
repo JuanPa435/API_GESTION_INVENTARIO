@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menú - InvenTech</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="../css/variables.css" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/landing.css" />
+  <link rel="stylesheet" href="../css/menu.css" />
+</head>
+<body>
+  <!-- FX de fondo reutilizados -->
+  <div class="fx fx-grid" aria-hidden="true"></div>
+  <div class="fx fx-stars" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-1" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-2" aria-hidden="true"></div>
+
+  <nav class="navbar">
+    <div class="container flex justify-between items-center">
+      <a href="/pages/menu.html" class="logo">
+        <i class="fas fa-cube logo-icon"></i>
+        <span class="logo-text text-gradient">InvenTech</span>
+      </a>
+      <div class="nav-links">
+        <a href="../login.html" class="btn btn-ghost">Cerrar sesión</a>
+      </div>
+      <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+    </div>
+  </nav>
+
+  <main class="menu-container">
+    <section class="menu-hero animate-on-scroll in-view">
+      <div class="container">
+  <h1 class="menu-title" id="welcome-title">Bienvenido</h1>
+        <p class="menu-subtitle">¿Qué te gustaría hacer hoy?</p>
+
+        <!-- Mis empresas primero -->
+        <section id="my-companies" style="margin-top: 0; margin-bottom: var(--spacing-xl);">
+          <h2 class="menu-title" style="font-size:1.5rem; margin-bottom: var(--spacing-md);">Mis empresas</h2>
+          <p class="menu-subtitle" style="margin-bottom: var(--spacing-lg);">Accede rápidamente a tus organizaciones</p>
+          <div id="companies-grid" class="menu-grid"></div>
+        </section>
+
+        <div class="menu-actions">
+          <a class="btn btn-xl btn-neon" href="#" id="btn-crear-empresa">
+            <i class="fa-solid fa-building"></i>
+            Crear empresa
+          </a>
+          <a class="btn btn-xl btn-neon" href="#" id="btn-unirse-empresa">
+            <i class="fa-solid fa-user-group"></i>
+            Unirte a una empresa
+          </a>
+        </div>
+
+        <div class="menu-grid">
+          <article class="menu-card">
+            <div class="menu-card-icon">
+              <i class="fa-solid fa-building"></i>
+            </div>
+            <h3 class="menu-card-title">Crear empresa</h3>
+            <p class="menu-card-desc">Registra una nueva organización para gestionar inventarios desde cero.</p>
+            <a href="/pages/create-company.html" class="btn btn-neon">Empezar</a>
+          </article>
+
+          <article class="menu-card">
+            <div class="menu-card-icon">
+              <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <h3 class="menu-card-title">Unirte a una empresa</h3>
+            <p class="menu-card-desc">Solicita acceso a una empresa existente con un código o invitación.</p>
+            <a href="/pages/join-company.html" class="btn btn-neon">Unirme</a>
+          </article>
+        </div>
+
+        
+      </div>
+    </section>
+  </main>
+
+  <script src="../js/landing.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    // Proteger la página: si no hay token, redirigir a login
+    (function guard(){
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/login.html'; }
+    })();
+
+    function parseJwt (token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch { return null; }
+    }
+
+    // Personalizar bienvenida con el usuario
+    (function welcome(){
+      const token = localStorage.getItem('token');
+      const payload = token ? parseJwt(token) : null;
+      const user = payload?.sub || '';
+      const title = document.getElementById('welcome-title');
+      if (title && user) title.textContent = `Bienvenido, ${user}`;
+    })();
+
+    // Evitar volver a login/register con botón atrás
+    (function preventBack(){
+      history.pushState(null, '', location.href);
+      window.addEventListener('popstate', function(){ history.go(1); });
+    })();
+
+    // Utilidad de copiado segura
+    async function safeCopy(text){
+      if (!text) return false;
+      try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch(_){}
+      try {
+        const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly',''); ta.style.position='absolute'; ta.style.left='-9999px';
+        document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand('copy'); ta.remove(); return ok;
+      } catch(_) { return false; }
+    }
+
+    // Hooks listos para conectar a flujos reales
+    // Abrir la página de creación de empresa
+    document.getElementById('btn-crear-empresa')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = '/pages/create-company.html';
+    });
+    document.getElementById('btn-unirse-empresa')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = '/pages/join-company.html';
+    });
+
+    // Listar "Mis empresas": si admin -> todas; si no -> solo la suya (si tiene)
+    (async function listMyCompanies(){
+      const token = localStorage.getItem('token');
+      const grid = document.getElementById('companies-grid');
+      const section = document.getElementById('my-companies');
+      if (!grid || !section) return;
+
+      const makeChip = (code) => `
+        <span class="chip" style="display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .6rem;border-radius:999px;border:1px solid var(--border);background:rgba(14,165,233,0.08);color:var(--text);font-weight:700;letter-spacing:.5px;">
+          <i class="fa-solid fa-key"></i>
+          <span>${code || '—'}</span>
+        </span>`;
+
+      function renderCompanies(list){
+        grid.innerHTML = '';
+        if (!list || list.length === 0) {
+          grid.innerHTML = `
+            <article class="menu-card">
+              <div class="menu-card-icon"><i class="fa-solid fa-circle-info"></i></div>
+              <h3 class="menu-card-title">Sin empresas</h3>
+              <p class="menu-card-desc">Crea una nueva empresa o únete con un código.</p>
+              <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+                <a href="/pages/create-company.html" class="btn btn-neon">Crear</a>
+                <a href="/pages/join-company.html" class="btn btn-neon">Unirme</a>
+              </div>
+            </article>`;
+          return;
+        }
+        list.forEach(c => {
+          const card = document.createElement('article');
+          card.className = 'menu-card';
+          card.innerHTML = `
+            <div class="menu-card-icon"><i class="fa-solid fa-building"></i></div>
+            <h3 class="menu-card-title">${c.name || 'Empresa'}</h3>
+            <p class="menu-card-desc">${c.description || 'Sin descripción'}</p>
+            <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+              ${makeChip(c.invite_code)}
+              <a href="/pages/company-home.html?company_id=${c.id}" class="btn btn-neon">Ver</a>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      try {
+        // Nueva lógica: confiar en el backend para devolver tus empresas reales
+        const res = await fetch('/api/companies/my', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) {
+          renderCompanies([]);
+          return;
+        }
+        const list = await res.json();
+        renderCompanies(Array.isArray(list) ? list : []);
+      } catch (e) {
+        renderCompanies([]);
+      }
+    })();
+
+    // Cerrar sesión: limpiar token
+    document.querySelector('.nav-links a.btn.btn-ghost')?.addEventListener('click', (e) => {
+      try { localStorage.removeItem('token'); } catch {}
+    });
+  </script>
+</body>
+</html>

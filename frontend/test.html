@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Productos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Sistema de Productos</h1>
+        
+        <h2>1. Estado de Login</h2>
+        <div id="loginStatus" class="status info">Verificando...</div>
+        
+        <h2>2. Datos en localStorage</h2>
+        <pre id="localStorageData"></pre>
+        
+        <h2>3. Pruebas</h2>
+        <button onclick="testLogin()">1. Hacer Login</button>
+        <button onclick="getCompanies()">2. Obtener Empresas</button>
+        <button onclick="getProducts()">3. Obtener Productos</button>
+        <button onclick="createProduct()">4. Crear Producto</button>
+        <button onclick="clearLocalStorage()">Limpiar localStorage</button>
+        
+        <h2>Resultado</h2>
+        <pre id="result">Esperando acciones...</pre>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000";
+
+        function log(msg, type = "info") {
+            const result = document.getElementById("result");
+            const timestamp = new Date().toLocaleTimeString();
+            result.textContent += `\n[${timestamp}] ${msg}`;
+            result.scrollTop = result.scrollHeight;
+        }
+
+        function updateLocalStorageDisplay() {
+            const data = {
+                token: localStorage.getItem("token") ? "EXISTS" : "NO EXISTE",
+                user_data: localStorage.getItem("user_data")
+            };
+            document.getElementById("localStorageData").textContent = JSON.stringify(data, null, 2);
+            
+            if (localStorage.getItem("token")) {
+                document.getElementById("loginStatus").className = "status success";
+                document.getElementById("loginStatus").textContent = "✅ Hay sesión activa";
+            } else {
+                document.getElementById("loginStatus").className = "status error";
+                document.getElementById("loginStatus").textContent = "❌ No hay sesión activa";
+            }
+        }
+
+        async function testLogin() {
+            log("🔐 Intentando login...");
+            try {
+                const response = await fetch(`${API_BASE}/token`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: "username=jp@gmail.com&password=jp"
+                });
+
+                if (!response.ok) {
+                    log(`❌ Login falló: ${response.status}`, "error");
+                    return;
+                }
+
+                const data = await response.json();
+                localStorage.setItem("token", data.access_token);
+                log("✅ Login exitoso, token guardado");
+                updateLocalStorageDisplay();
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, "error");
+            }
+        }
+
+        async function getCompanies() {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                log("❌ No hay token. Haz login primero", "error");
+                return;
+            }
+
+            log("📦 Obteniendo empresas...");
+            try {
+                const response = await fetch(`${API_BASE}/api/companies/my`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    log(`❌ Error: ${response.status}`, "error");
+                    return;
+                }
+
+                const companies = await response.json();
+                log(`✅ Empresas encontradas: ${companies.length}`);
+                companies.forEach(c => log(`   - ${c.name} (id: ${c.id})`));
+                localStorage.setItem("company_id", companies[0].id);
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, "error");
+            }
+        }
+
+        async function getProducts() {
+            const token = localStorage.getItem("token");
+            const companyId = localStorage.getItem("company_id");
+            
+            if (!token) {
+                log("❌ No hay token", "error");
+                return;
+            }
+            if (!companyId) {
+                log("❌ No hay company_id", "error");
+                return;
+            }
+
+            log(`📋 Obteniendo productos de empresa ${companyId}...`);
+            try {
+                const response = await fetch(`${API_BASE}/api/company/${companyId}/items/`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    log(`❌ Error: ${response.status}`, "error");
+                    const text = await response.text();
+                    log(`Respuesta: ${text}`);
+                    return;
+                }
+
+                const items = await response.json();
+                log(`✅ Productos encontrados: ${items.length}`);
+                items.forEach(item => log(`   - ${item.name} (qty: ${item.quantity})`));
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, "error");
+            }
+        }
+
+        async function createProduct() {
+            const token = localStorage.getItem("token");
+            const companyId = localStorage.getItem("company_id");
+            
+            if (!token || !companyId) {
+                log("❌ Falta token o company_id", "error");
+                return;
+            }
+
+            log("➕ Creando producto...");
+            try {
+                const productData = {
+                    name: `Test ${Date.now()}`,
+                    description: "Producto de prueba",
+                    quantity: 100,
+                    min_quantity: 10,
+                    company_id: parseInt(companyId)
+                };
+
+                const response = await fetch(`${API_BASE}/api/items/`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(productData)
+                });
+
+                if (!response.ok) {
+                    log(`❌ Error: ${response.status}`, "error");
+                    const text = await response.text();
+                    log(`Respuesta: ${text}`);
+                    return;
+                }
+
+                const item = await response.json();
+                log(`✅ Producto creado: ${item.name} (id: ${item.id})`);
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, "error");
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.clear();
+            log("🧹 localStorage limpiado");
+            updateLocalStorageDisplay();
+        }
+
+        // Inicializar
+        document.addEventListener("DOMContentLoaded", updateLocalStorageDisplay);
+    </script>
+</body>
+</html>

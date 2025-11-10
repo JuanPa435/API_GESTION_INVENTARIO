@@ -1,0 +1,143 @@
+/* Estilos específicos para Create Company y Join Company */
+
+.page-wrap {
+  margin-top: 3.5rem; /* compensa navbar fija, más compacto */
+  min-height: auto; /* no forzar altura, evita que el contenido quede centrado verticalmente */
+  display: block; /* dejar flujo normal para que empiece arriba */
+  padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-2xl);
+}
+
+/* Tarjeta contenedora */
+.card {
+  width: 100%;
+  max-width: 960px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, rgba(15,23,42,0.75), rgba(15,23,42,0.5));
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xl);
+  position: relative;
+  margin: 0 auto; /* centrar horizontalmente sin centrar verticalmente */
+}
+
+/* Encabezado */
+.hero { margin-bottom: var(--spacing-lg); }
+/* Sobrescribe el .hero global de landing.css dentro de las tarjetas */
+.card .hero {
+  display: block;
+  text-align: left;
+  min-height: auto;      /* evita ocupar toda la altura de la pantalla */
+  padding: 0;            /* elimina padding vertical excesivo */
+  align-items: initial;  /* reset de flex alignment si aplica */
+  background: none;      /* sin fondos decorativos del hero global */
+  position: static;      /* evita posicionamiento especial del hero global */
+}
+.card .hero h1 { font-size: 2rem; font-weight: 800; margin: 0 0 .35rem 0; display: block; }
+.card .hero p { color: var(--text-secondary); margin: 0; display: block; }
+
+/* Layout dos columnas */
+.grid { display: grid; gap: var(--spacing-xl); }
+@media (min-width: 900px) {
+  .grid { grid-template-columns: 1.1fr .9fr; }
+}
+
+.panel { display: grid; gap: var(--spacing-md); }
+
+/* Panel lateral */
+.side {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  background: linear-gradient(180deg, rgba(2,6,23,0.35), rgba(2,6,23,0.15));
+}
+.side-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(closest-side, rgba(14,165,233,.25), transparent);
+  color: var(--primary);
+  margin-bottom: var(--spacing-md);
+}
+.side-title { font-weight: 700; margin-bottom: .5rem; }
+
+/* Chips, labels y listas */
+.chip {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .35rem .6rem; border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(14,165,233,0.08); color: var(--text);
+  font-weight: 700; letter-spacing: .5px;
+}
+/* Chip que puede copiar al hacer click */
+.chip.copyable { cursor: pointer; }
+.pulse { animation: pulseGlow 0.9s ease-in-out; }
+.label { font-size: .9rem; color: var(--text-secondary); margin-bottom: .35rem; display: inline-block; }
+
+.tip-list { list-style: none; padding: 0; margin-top: var(--spacing-md); display: grid; gap: .5rem; }
+.tip-list li { color: var(--text-secondary); display: flex; gap: .5rem; align-items: center; }
+.tip-list li i { color: var(--primary); opacity: .95; }
+
+/* Inputs con acción lateral (botón sugerir) */
+.input-with-action { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
+
+/* Botón ghost auxiliar (no interfiere con los existentes) */
+.btn-ghost { background: rgba(2,6,23,0.4); border: 1px solid var(--border); color: var(--text); }
+.btn-ghost:hover { background: rgba(2,6,23,0.55); }
+
+/* ---- Página de bienvenida de empresa ---- */
+.welcome-wrap { margin-top: 3.5rem; padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-2xl); }
+
+.welcome-banner {
+  display: grid;
+  gap: var(--spacing-md);
+}
+.welcome-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+.welcome-icon {
+  width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(closest-side, rgba(14,165,233,.25), transparent);
+  color: var(--primary);
+}
+.welcome-titles h1 { font-size: 1.75rem; margin: 0; }
+
+.welcome-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-sm); }
+.role-pill { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem .6rem; border-radius: 999px; border: 1px solid var(--border); color: var(--text); opacity: .9; }
+.role-pill i { color: var(--primary); }
+
+.manage-section { margin-top: var(--spacing-xl); }
+.manage-title { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: var(--spacing-sm); }
+/* Barra tipo "chocolatina" (segmentada) */
+.manage-bar {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0; /* segmentos unidos */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox: ocultar scrollbar */
+  padding: .25rem; /* marco alrededor de los segmentos */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, rgba(2,6,23,0.35), rgba(2,6,23,0.15));
+}
+.manage-bar::-webkit-scrollbar { display: none; } /* WebKit: ocultar scrollbar */
+
+.manage-item {
+  display: inline-flex; align-items: center; gap: .6rem;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap; min-width: max-content;
+  padding: .85rem 1rem;
+  border-right: 1px solid var(--border); /* separador entre "cuadraditos" */
+  border-radius: 0; background: transparent;
+}
+.manage-item:first-child { border-top-left-radius: var(--radius-lg); border-bottom-left-radius: var(--radius-lg); }
+.manage-item:last-child { border-right: none; border-top-right-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
+.manage-item i { color: var(--primary); }
+.manage-item:hover { background: rgba(14,165,233,0.08); }
+
+@media (max-width: 720px) {
+  .welcome-titles h1 { font-size: 1.4rem; }
+  .manage-bar { grid-auto-columns: minmax(120px, 1fr); }
+}

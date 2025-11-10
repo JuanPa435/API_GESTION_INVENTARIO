@@ -1,0 +1,10 @@
+fastapi==0.100.0
+uvicorn[standard]==0.23.0
+SQLAlchemy==2.0.19
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+pydantic==1.10.12
+pymysql==1.1.0
+email-validator==2.0.0
+python-multipart==0.0.9
+aiosqlite==0.19.0

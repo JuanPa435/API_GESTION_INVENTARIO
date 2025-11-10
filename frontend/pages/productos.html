@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos - InvenTech</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/products.css" />
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/pages/menu.html" class="logo">
+                <i class="fas fa-cube"></i> InvenTech
+            </a>
+            <div class="nav-links">
+                <a href="/pages/menu.html">Menú</a>
+                <a href="/login.html" onclick="logout()">Cerrar sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="header">
+            <h1>📦 Productos</h1>
+            <button class="btn btn-primary" id="addProductBtn" onclick="openAddModal()">
+                <i class="fas fa-plus"></i> Agregar Producto
+            </button>
+        </div>
+
+        <!-- Alerts -->
+        <div id="alert" style="display: none;"></div>
+
+        <!-- Search -->
+        <div class="search-bar">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Buscar productos..."
+                onkeyup="filterProducts()"
+            >
+        </div>
+
+        <!-- Products Table -->
+        <div id="loadingContainer" class="loading" style="display: none;">
+            <i class="fas fa-spinner"></i> Cargando productos...
+        </div>
+
+        <div id="emptyContainer" class="empty-state" style="display: none;">
+            <i class="fas fa-inbox"></i>
+            <p>No hay productos aún</p>
+            <button class="btn btn-primary" style="margin-top: 1rem;" onclick="openAddModal()">
+                Crear primer producto
+            </button>
+        </div>
+
+        <table class="products-table" id="productsTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Stock Mínimo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="productsBody">
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal Add/Edit -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Agregar Producto</h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <form id="productForm" onsubmit="saveProduct(event)">
+                <div class="form-group">
+                    <label>Nombre *</label>
+                    <input type="text" id="name" required placeholder="Ej: Laptop">
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="description" placeholder="Describe el producto..." rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad *</label>
+                    <input type="number" id="quantity" required min="0" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Stock Mínimo *</label>
+                    <input type="number" id="minQuantity" required min="0" placeholder="0">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Delete Confirmation -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Eliminar Producto</h2>
+                <button class="close-btn" onclick="closeDeleteModal()">×</button>
+            </div>
+            <p style="margin-bottom: 2rem; color: #cbd5e1;">¿Estás seguro de que deseas eliminar este producto?</p>
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let products = [];
+        let filteredProducts = [];
+        let currentEditingId = null;
+        let currentDeleteId = null;
+        let companyId = null;
+        let userRole = null;
+
+        // Initialize
+        document.addEventListener("DOMContentLoaded", async () => {
+            await init();
+        });
+
+        async function init() {
+            const token = localStorage.getItem("token");
+            
+            if (!token) {
+                showAlert("No hay sesión activa. Redirigiendo...", "error");
+                setTimeout(() => window.location.href = "/login.html", 2000);
+                return;
+            }
+
+            // Get company ID and user role
+            try {
+                const response = await fetch(`${API_BASE}/api/companies/my`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const companies = await response.json();
+                    if (companies.length > 0) {
+                        companyId = companies[0].id;
+                        localStorage.setItem("company_id", companyId);
+                        
+                        // Get user role for this company
+                        const roleResponse = await fetch(
+                            `${API_BASE}/api/companies/${companyId}/my-role`,
+                            { headers: { "Authorization": `Bearer ${token}` } }
+                        );
+                        
+                        if (roleResponse.ok) {
+                            const roleData = await roleResponse.json();
+                            userRole = roleData.role;
+                        }
+                        
+                        await loadProducts();
+                    } else {
+                        showAlert("No perteneces a ninguna empresa", "error");
+                    }
+                } else {
+                    showAlert("Error al obtener empresas", "error");
+                }
+            } catch (error) {
+                showAlert("Error: " + error.message, "error");
+            }
+        }
+
+        async function loadProducts() {
+            const token = localStorage.getItem("token");
+            
+            if (!companyId || !token) return;
+
+            showLoading(true);
+
+            try {
+                const response = await fetch(
+                    `${API_BASE}/api/company/${companyId}/items/`,
+                    { headers: { "Authorization": `Bearer ${token}` } }
+                );
+
+                if (response.ok) {
+                    products = await response.json();
+                    filteredProducts = [...products];
+                    
+                    // Mostrar/ocultar botón de agregar según el rol
+                    const addBtn = document.getElementById("addProductBtn");
+                    if (userRole === "admin") {
+                        addBtn.style.display = "block";
+                    } else {
+                        addBtn.style.display = "none";
+                    }
+                    
+                    renderProducts();
+                    showLoading(false);
+                } else {
+                    showAlert("Error al cargar productos", "error");
+                    showLoading(false);
+                }
+            } catch (error) {
+                showAlert("Error: " + error.message, "error");
+                showLoading(false);
+            }
+        }
+
+        function renderProducts() {
+            const tbody = document.getElementById("productsBody");
+            const table = document.getElementById("productsTable");
+            const empty = document.getElementById("emptyContainer");
+
+            if (filteredProducts.length === 0) {
+                table.style.display = "none";
+                empty.style.display = "block";
+                tbody.innerHTML = "";
+            } else {
+                table.style.display = "table";
+                empty.style.display = "none";
+                tbody.innerHTML = filteredProducts.map(p => {
+                    let actionsHTML = '';
+                    if (userRole === "admin") {
+                        actionsHTML = `
+                            <button class="btn btn-small btn-primary" onclick="openEditModal(${p.id})">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn btn-small btn-danger" onclick="openDeleteModal(${p.id})">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        `;
+                    } else {
+                        actionsHTML = '<span style="color: #94a3b8; font-size: 0.875rem;">Solo lectura</span>';
+                    }
+                    
+                    return `
+                    <tr>
+                        <td><strong>${escapeHtml(p.name)}</strong></td>
+                        <td>${escapeHtml(p.description || "-")}</td>
+                        <td>${p.quantity}</td>
+                        <td>${p.min_quantity}</td>
+                        <td>
+                            <span class="status ${getStatusClass(p.quantity, p.min_quantity)}">
+                                ${getStatusText(p.quantity, p.min_quantity)}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="actions">
+                                ${actionsHTML}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                }).join("");
+            }
+        }
+
+        function getStatusClass(qty, min) {
+            if (qty === 0) return "status-critical";
+            if (qty <= min) return "status-low";
+            return "status-normal";
+        }
+
+        function getStatusText(qty, min) {
+            if (qty === 0) return "Sin Stock";
+            if (qty <= min) return "Stock Bajo";
+            return "Normal";
+        }
+
+        function filterProducts() {
+            const search = document.getElementById("searchInput").value.toLowerCase();
+            filteredProducts = products.filter(p =>
+                p.name.toLowerCase().includes(search) ||
+                (p.description && p.description.toLowerCase().includes(search))
+            );
+            renderProducts();
+        }
+
+        function openAddModal() {
+            if (userRole !== "admin") {
+                showAlert("Solo administradores pueden crear productos", "error");
+                return;
+            }
+            
+            currentEditingId = null;
+            document.getElementById("modalTitle").textContent = "Agregar Producto";
+            document.getElementById("productForm").reset();
+            document.getElementById("modal").classList.add("active");
+        }
+
+        function openEditModal(id) {
+            if (userRole !== "admin") {
+                showAlert("Solo administradores pueden editar productos", "error");
+                return;
+            }
+            
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            currentEditingId = id;
+            document.getElementById("modalTitle").textContent = "Editar Producto";
+            document.getElementById("name").value = product.name;
+            document.getElementById("description").value = product.description || "";
+            document.getElementById("quantity").value = product.quantity;
+            document.getElementById("minQuantity").value = product.min_quantity;
+            document.getElementById("modal").classList.add("active");
+        }
+
+        function closeModal() {
+            document.getElementById("modal").classList.remove("active");
+            currentEditingId = null;
+        }
+
+        async function saveProduct(event) {
+            event.preventDefault();
+
+            const token = localStorage.getItem("token");
+            if (!token) {
+                showAlert("No hay sesión activa", "error");
+                return;
+            }
+
+            const data = {
+                name: document.getElementById("name").value,
+                description: document.getElementById("description").value || null,
+                quantity: parseInt(document.getElementById("quantity").value),
+                min_quantity: parseInt(document.getElementById("minQuantity").value),
+                company_id: companyId
+            };
+
+            try {
+                let response;
+                if (currentEditingId) {
+                    response = await fetch(`${API_BASE}/api/items/${currentEditingId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    response = await fetch(`${API_BASE}/api/items/`, {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                if (response.ok) {
+                    showAlert(
+                        currentEditingId ? "Producto actualizado" : "Producto creado",
+                        "success"
+                    );
+                    closeModal();
+                    await loadProducts();
+                } else {
+                    const error = await response.json();
+                    showAlert("Error: " + (error.detail || "No se pudo guardar"), "error");
+                }
+            } catch (error) {
+                showAlert("Error: " + error.message, "error");
+            }
+        }
+
+        function openDeleteModal(id) {
+            currentDeleteId = id;
+            document.getElementById("deleteModal").classList.add("active");
+        }
+
+        function closeDeleteModal() {
+            document.getElementById("deleteModal").classList.remove("active");
+            currentDeleteId = null;
+        }
+
+        async function confirmDelete() {
+            const token = localStorage.getItem("token");
+            if (!token || !currentDeleteId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/items/${currentDeleteId}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showAlert("Producto eliminado", "success");
+                    closeDeleteModal();
+                    await loadProducts();
+                } else {
+                    showAlert("Error al eliminar", "error");
+                }
+            } catch (error) {
+                showAlert("Error: " + error.message, "error");
+            }
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById("alert");
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.style.display = "block";
+
+            setTimeout(() => {
+                alertDiv.style.display = "none";
+            }, 4000);
+        }
+
+        function showLoading(show) {
+            document.getElementById("loadingContainer").style.display = show ? "block" : "none";
+        }
+
+        function logout() {
+            localStorage.removeItem("token");
+            localStorage.removeItem("company_id");
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

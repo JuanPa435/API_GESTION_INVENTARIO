@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crear cuenta - InvenTech</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/landing.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+<body>
+  <!-- FX de fondo -->
+  <div class="fx fx-grid" aria-hidden="true"></div>
+  <div class="fx fx-stars" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-1" aria-hidden="true"></div>
+  <div class="fx fx-blob fx-blob-2" aria-hidden="true"></div>
+  <div class="fx auth-beam" aria-hidden="true"></div>
+  <div class="fx auth-scanlines" aria-hidden="true"></div>
+
+  <nav class="navbar">
+    <div class="container flex justify-between items-center">
+      <a href="/" class="logo">
+        <i class="fas fa-cube logo-icon"></i>
+        <span class="logo-text text-gradient">InvenTech</span>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Inicio</a>
+        <a href="login.html" class="btn btn-ghost">Iniciar sesión</a>
+      </div>
+      <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+    </div>
+  </nav>
+
+  <main class="auth-container">
+    <section class="auth-card animate-on-scroll in-view">
+      <header class="auth-header">
+        <h1 class="auth-title text-gradient">Crear cuenta</h1>
+        <p class="auth-subtitle">Configura tu acceso en un minuto</p>
+      </header>
+
+  <form class="form" id="register-form" method="post" action="/api/register">
+        <div class="input-group">
+          <i class="fa-solid fa-user input-icon"></i>
+          <input id="username" name="username" type="text" class="input-control" placeholder="Usuario" required />
+        </div>
+
+        <div class="input-group">
+          <i class="fa-solid fa-envelope input-icon"></i>
+          <input id="email" name="email" type="email" class="input-control" placeholder="Correo electrónico" required />
+        </div>
+
+        <div class="input-group">
+          <i class="fa-solid fa-lock input-icon"></i>
+          <input id="password" name="password" type="password" class="input-control" placeholder="Contraseña" required />
+          <button type="button" class="toggle-visibility" data-toggle="password" data-target="password" aria-label="Mostrar u ocultar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+
+        <div class="input-group">
+          <i class="fa-solid fa-check-double input-icon"></i>
+          <input id="confirm_password" name="confirm_password" type="password" class="input-control" placeholder="Confirmar contraseña" required />
+          <button type="button" class="toggle-visibility" data-toggle="password" data-target="confirm_password" aria-label="Mostrar u ocultar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+          <div id="confirm_error" class="field-error">Las contraseñas no coinciden</div>
+        </div>
+
+        
+
+        <div class="auth-actions">
+          <button class="btn btn-xl btn-neon btn-full" type="submit">Crear cuenta <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </form>
+
+      <p class="auth-alt">¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
+    </section>
+  </main>
+
+  <script src="js/landing.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
